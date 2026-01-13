@@ -1,0 +1,59 @@
+name: Translate & Sync
+
+on:
+  push:
+    branches: ["main"]
+  workflow_dispatch:
+
+concurrency:
+  group: translate-sync-main
+  cancel-in-progress: true
+
+jobs:
+  translate:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Get GitHub App token
+        id: app-token
+        uses: actions/create-github-app-token@v1
+        with:
+          app-id: ${{ secrets.GH_APP_ID }}
+          private-key: ${{ secrets.GH_APP_PRIVATE_KEY }}
+
+      - name: Install deps
+        run: |
+          pip install -U openai==1.*
+
+      - name: Make scripts executable
+        run: |
+          chmod +x .github/scripts/push_to_repo.sh
+
+      - name: Translate repo
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        run: |
+          python .github/scripts/translate_repo.py
+
+      - name: Push EN
+        env:
+          TOKEN: ${{ steps.app-token.outputs.token }}
+          TARGET_REPO: Afony109/antirub-governance_en
+          LANG: en
+        run: |
+          bash .github/scripts/push_to_repo.sh
+
+      - name: Push UA
+        env:
+          TOKEN: ${{ steps.app-token.outputs.token }}
+          TARGET_REPO: Afony109/antirub-governance_ua
+          LANG: ua
+        run: |
+          bash .github/scripts/push_to_repo.sh
