@@ -45,7 +45,7 @@ jobs:
       - name: Push EN
         env:
           TOKEN: ${{ steps.app-token.outputs.token }}
-          TARGET_REPO: Afony109/antirub-governance_en
+          TARGET_REPO: Afony109/antirub-governance
           LANG: en
         run: |
           bash .github/scripts/push_to_repo.sh
