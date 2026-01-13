@@ -2,7 +2,7 @@ name: Translate & Sync
 
 on:
   push:
-    branches: [ "main" ]
+    branches: ["main"]
   workflow_dispatch:
 
 concurrency:
@@ -32,6 +32,10 @@ jobs:
         run: |
           pip install -U openai==1.*
 
+      - name: Make scripts executable
+        run: |
+          chmod +x .github/scripts/push_to_repo.sh
+
       - name: Translate repo
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
@@ -53,7 +57,3 @@ jobs:
           LANG: ua
         run: |
           bash .github/scripts/push_to_repo.sh
-
-      - name: Make scripts executable
-      run: |
-      chmod +x .github/scripts/push_to_repo.sh
