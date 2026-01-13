@@ -1,56 +1,54 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# --- required env ---
 : "${TOKEN:?Missing TOKEN}"
 : "${TARGET_REPO:?Missing TARGET_REPO}"
 : "${LANG:?Missing LANG}"
 
-# --- config ---
 BRANCH="bot/translate-from-ru"
 WORKDIR="target_${LANG}"
 SRC_DIR="out/${LANG}"
 
 echo "Pushing translations to ${TARGET_REPO} (${LANG})"
 
-# clean previous workdir
-rm -rf "$WORKDIR"
+rm -rf "${WORKDIR}"
 
-# --- clone with GitHub App token ---
-git clone "https://x-access-token:${TOKEN}@github.com/${TARGET_REPO}.git" "$WORKDIR"
+# Клонируем именно target repo
+git clone "https://x-access-token:${TOKEN}@github.com/${TARGET_REPO}.git" "${WORKDIR}"
 
-cd "$WORKDIR"
+# Проверка: это точно git-репозиторий
+git -C "${WORKDIR}" rev-parse --is-inside-work-tree >/dev/null
 
-# create/reset branch
-git checkout -B "$BRANCH"
+# Для дополнительной уверенности: origin должен быть TARGET_REPO
+ORIGIN_URL="$(git -C "${WORKDIR}" remote get-url origin)"
+echo "Origin: ${ORIGIN_URL}"
+case "${ORIGIN_URL}" in
+  *"${TARGET_REPO}.git"*) ;;
+  *) echo "ERROR: origin is not target repo (${TARGET_REPO}). Aborting."; exit 1;;
+esac
 
-# --- replace repo content with translated files ---
-cd ..
-shopt -s dotglob
-for item in "$WORKDIR"/* "$WORKDIR"/.*; do
-  base="$(basename "$item")"
-  [[ "$base" == "." || "$base" == ".." || "$base" == ".git" ]] && continue
-  rm -rf "$item"
-done
-shopt -u dotglob
+# Создаём/сбрасываем ветку
+git -C "${WORKDIR}" checkout -B "${BRANCH}"
 
-rsync -a --delete "${SRC_DIR}/" "${WORKDIR}/"
+# Синхронизация файлов перевода в корень target repo
+# (исключаем .git, чтобы не сломать репозиторий)
+rsync -a --delete \
+  --exclude ".git/" \
+  "${SRC_DIR}/" "${WORKDIR}/"
 
-cd "$WORKDIR"
+# Коммитим только если есть изменения
+git -C "${WORKDIR}" add -A
 
-# --- commit if there are changes ---
-git add -A
-
-if git diff --cached --quiet; then
+if git -C "${WORKDIR}" diff --cached --quiet; then
   echo "No changes to commit for ${TARGET_REPO}"
   exit 0
 fi
 
-git -c user.name="ru-translate-bot" \
-    -c user.email="ru-translate-bot@users.noreply.github.com" \
-    commit -m "[bot-translate] sync from ru"
+git -C "${WORKDIR}" -c user.name="ru-translate-bot" \
+  -c user.email="ru-translate-bot@users.noreply.github.com" \
+  commit -m "[bot-translate] sync from ru"
 
-# --- push branch ---
-git push -f origin "$BRANCH"
+# Пушим ветку в target repo
+git -C "${WORKDIR}" push -f origin "${BRANCH}"
 
-echo "Done: ${TARGET_REPO}"
+echo "Done: ${TARGET_REPO} (${LANG})"
