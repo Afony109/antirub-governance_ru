@@ -6,8 +6,8 @@ on:
   workflow_dispatch:
 
 concurrency:
-  group: translate-sync-main
-  cancel-in-progress: true
+  group: translate-sync-${{ github.repository }}-${{ github.ref_name }}-${{ github.event_name }}
+  cancel-in-progress: false
 
 jobs:
   translate:
