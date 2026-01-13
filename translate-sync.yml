@@ -53,3 +53,7 @@ jobs:
           LANG: ua
         run: |
           bash .github/scripts/push_to_repo.sh
+
+      - name: Make scripts executable
+      run: |
+      chmod +x .github/scripts/push_to_repo.sh
